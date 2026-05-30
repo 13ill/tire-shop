@@ -1,0 +1,98 @@
+# Project: POS+Stock ร้านยาง/อะไหล่/ซ่อมบำรุง
+# AI ต้องอ่านไฟล์นี้ทุกครั้งที่เปิด project
+
+---
+
+## 1. กฎหลัก (ห้ามละเมิด)
+
+1. **ห้าม code ทันที** — ต้องผ่าน Gate ก่อนเสมอ
+2. **ถามก่อนทำ** — ถ้า requirement ไม่ชัด ต้องถามกลับ ห้ามเดา
+3. **คิดเชิงระบบ** — มอง upstream / downstream / dependency
+4. **ประเมินความเสี่ยง** — "ถ้าพังจะเกิดอะไร?"
+5. **เสนอทางเลือก + รอ confirm** — ห้ามเลือกให้ ห้ามข้ามไป execute
+6. **บันทึกทุกครั้ง** — decision/lesson ลง docs/decisions/ หรือ docs/lessons/
+7. **Proactive Requirement** — ห้ามรอให้ user คิดเอง ต้องเสนอ req ที่ควรมี
+
+---
+
+## 2. Gate System
+
+### ก่อน code module ใหม่:
+- [ ] มี docs/modules/[module].md ไหม? → ไม่มี = สร้างก่อน
+- [ ] ถาม: เป้าหมาย? success? ระบบที่เกี่ยว? ถ้าพัง? scope?
+- [ ] เสนอ tradeoff → รอ confirm → ห้ามไปต่อจนกว่าจะได้
+
+### ก่อนแก้ code เดิม:
+- [ ] อ่าน docs/modules/[module].md ก่อน
+- [ ] เข้าใจ flow ปัจจุบัน
+- [ ] ประเมิน impact
+
+### Hotfix (ด่วน):
+- [ ] Quick Gate: symptom → impact → module → rollback plan
+
+---
+
+## 3. Project Context (อ่านเพิ่ม)
+
+| ไฟล์ | เนื้อหา |
+|---|---|
+| docs/architecture.md | ภาพรวมระบบ + tech stack + folder structure + data flows |
+| docs/project-brief.md | สรุป project + scope + modules |
+| docs/db-schema.sql | Database schema เต็ม (MySQL) |
+| docs/scope.md | Feature scope ละเอียด + priority + status |
+| docs/workflows.md | Flow การทำงานทุก use case |
+| docs/decisions/ | ทุก decision ที่เคยตัดสินใจ |
+| docs/modules/ | Architecture ของแต่ละ module |
+| docs/lessons/ | บทเรียนที่ได้จากการทำ |
+
+---
+
+## 4. Tech Stack
+
+- Frontend: React 18 + Vite + TypeScript
+- UI: TailwindCSS + shadcn/ui + TanStack Table + React Hook Form + Zod
+- State: TanStack Query + Zustand
+- Offline: Dexie.js (IndexedDB) + sync queue
+- PWA: vite-plugin-pwa
+- Backend: Hono (Node.js)
+- DB: MySQL/MariaDB + Drizzle ORM
+- Hosting: Shared hosting (cPanel) Phase 1 → VPS+Docker Phase 2
+
+---
+
+## 5. Coding Rules
+
+- ใช้ TypeScript เสมอ (strict mode)
+- ใช้ UUID (v4) สำหรับ primary key ทุก table
+- Naming: camelCase (JS/TS), snake_case (DB columns)
+- Import อยู่ด้านบนไฟล์เสมอ
+- Component: 1 file = 1 component
+- Module structure: pages/ + components/ + hooks/ + api.ts + types.ts
+- ห้าม hardcode ค่าที่ควร config (VAT, payment methods, etc.)
+- Error handling: ทุก API call ต้องมี try/catch + user-friendly message
+- Offline-first: ทุก mutation ผ่าน sync queue
+
+---
+
+## 6. Communication
+
+- ภาษาไทยเป็นหลัก
+- ศัพท์ technical ต้องมีคำอธิบายในวงเล็บ
+- ยกตัวอย่างจริงจากระบบนี้เสมอ (ยาง, อะไหล่, job ซ่อม)
+
+---
+
+## 7. Global AI-OS System (ถ้ามีในเครื่อง)
+
+```
+Path: $AI_OS_PATH%  (Windows: %AI_OS_PATH%, macOS: $AI_OS_PATH)
+ถ้ามี → อ่าน gate system, modes, checklists เพิ่มเติมจากที่นี่
+ถ้าไม่มี → ใช้กฎใน .windsurfrules นี้ + docs/ เป็น fallback (เพียงพอ)
+```
+
+ดูรายละเอียด: docs/ai-os-reference.md
+
+### Commands (ใช้เมื่อ setup/ อยู่ใน workspace):
+- `/inject-ai-os` — copy AI-OS skills เข้า project
+- `/remove-ai-os` — ลบ AI-OS ออกจาก project  
+- `/sync-ai-os` — update AI-OS จาก setup/
