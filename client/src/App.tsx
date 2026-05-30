@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import SettingsPage from './pages/SettingsPage';
 import ProductsPage from './pages/ProductsPage';
 import StockPage from './pages/StockPage';
+import POSPage from './pages/POSPage';
 import { initOfflineDB } from './lib/db';
 import { SyncService } from './lib/sync';
 
@@ -75,17 +76,7 @@ function App() {
       case 'stock':
         return <StockPage />;
       case 'pos':
-        return (
-          <div className="space-y-6">
-            <div className="bg-white shadow rounded-lg p-6">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">จุดขาย (POS)</h1>
-              <div className="text-gray-500 text-center py-8">
-                <p>โมดูล POS กำลังพัฒนา...</p>
-                <p className="text-sm mt-2">จะเพิ่มในเวอร์ชันถัดไป</p>
-              </div>
-            </div>
-          </div>
-        );
+        return <POSPage />;
       case 'customers':
         return (
           <div className="space-y-6">
