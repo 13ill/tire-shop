@@ -2,8 +2,8 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db } from '../db';
-import { products } from '../db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { products, sales, saleItems, stockMovements, customers, vehicles, users } from '../db/schema';
+import { eq, desc, sql } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 
 const posRouter = new Hono();

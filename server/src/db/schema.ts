@@ -180,6 +180,68 @@ export const pricingTiers = mysqlTable('pricing_tiers', {
   isDefault: boolean('is_default').default(false),
 });
 
+// =============================================
+// POS & TRANSACTIONS
+// =============================================
+
+export const sales = mysqlTable('sales', {
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => uuidv4()),
+  customerId: varchar('customer_id', { length: 36 }),
+  vehicleId: varchar('vehicle_id', { length: 36 }),
+  userId: varchar('user_id', { length: 36 }).notNull(),
+  saleDate: timestamp('sale_date').defaultNow(),
+  status: mysqlEnum('status', ['draft', 'confirmed', 'paid', 'cancelled']).default('draft'),
+  subtotal: decimal('subtotal', { precision: 12, scale: 2 }).default('0'),
+  discountAmount: decimal('discount_amount', { precision: 12, scale: 2 }).default('0'),
+  vatAmount: decimal('vat_amount', { precision: 12, scale: 2 }).default('0'),
+  totalAmount: decimal('total_amount', { precision: 12, scale: 2 }).default('0'),
+  paidAmount: decimal('paid_amount', { precision: 12, scale: 2 }).default('0'),
+  changeAmount: decimal('change_amount', { precision: 12, scale: 2 }).default('0'),
+  paymentMethodId: varchar('payment_method_id', { length: 36 }),
+  note: text('note'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+}, (table) => ({
+  customerIdx: index('sale_customer_idx').on(table.customerId),
+  vehicleIdx: index('sale_vehicle_idx').on(table.vehicleId),
+  userIdx: index('sale_user_idx').on(table.userId),
+  saleDateIdx: index('sale_date_idx').on(table.saleDate),
+  statusIdx: index('sale_status_idx').on(table.status),
+}));
+
+export const saleItems = mysqlTable('sale_items', {
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => uuidv4()),
+  saleId: varchar('sale_id', { length: 36 }).notNull(),
+  productId: varchar('product_id', { length: 36 }).notNull(),
+  quantity: decimal('quantity', { precision: 12, scale: 2 }).notNull(),
+  unitPrice: decimal('unit_price', { precision: 12, scale: 2 }).notNull(),
+  discountAmount: decimal('discount_amount', { precision: 12, scale: 2 }).default('0'),
+  totalPrice: decimal('total_price', { precision: 12, scale: 2 }).notNull(),
+  note: text('note'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+}, (table) => ({
+  saleIdx: index('sale_item_sale_idx').on(table.saleId),
+  productIdx: index('sale_item_product_idx').on(table.productId),
+}));
+
+export const stockMovements = mysqlTable('stock_movements', {
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => uuidv4()),
+  productId: varchar('product_id', { length: 36 }).notNull(),
+  movementType: mysqlEnum('movement_type', ['in', 'out', 'return', 'loss', 'adjust']).notNull(),
+  quantity: decimal('quantity', { precision: 12, scale: 2 }).notNull(),
+  referenceId: varchar('reference_id', { length: 36 }),
+  referenceType: mysqlEnum('reference_type', ['sale', 'purchase', 'adjustment', 'return', 'loss']).notNull(),
+  note: text('note'),
+  userId: varchar('user_id', { length: 36 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  productIdx: index('stock_product_idx').on(table.productId),
+  movementTypeIdx: index('stock_movement_type_idx').on(table.movementType),
+  referenceIdx: index('stock_reference_idx').on(table.referenceId),
+  createdAtIdx: index('stock_created_at_idx').on(table.createdAt),
+}));
+
 // Export types
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -195,3 +257,9 @@ export type Vehicle = typeof vehicles.$inferSelect;
 export type NewVehicle = typeof vehicles.$inferInsert;
 export type PricingTier = typeof pricingTiers.$inferSelect;
 export type NewPricingTier = typeof pricingTiers.$inferInsert;
+export type Sale = typeof sales.$inferSelect;
+export type NewSale = typeof sales.$inferInsert;
+export type SaleItem = typeof saleItems.$inferSelect;
+export type NewSaleItem = typeof saleItems.$inferInsert;
+export type StockMovement = typeof stockMovements.$inferSelect;
+export type NewStockMovement = typeof stockMovements.$inferInsert;
