@@ -473,7 +473,7 @@ export default function ProductsPage() {
                   console.log('🔥 handleSubmit result:', result);
                   return result;
                 }} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   ชื่อสินค้า/บริการ *
@@ -776,32 +776,106 @@ export default function ProductsPage() {
 
       {/* Products List */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ชื่อ
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ประเภท
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  หมวดหมู่
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ราคา
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  สต็อก
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  สถานะ
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  จัดการ
-                </th>
-              </tr>
+        {/* Mobile Card View */}
+        <div className="sm:hidden">
+          <div className="divide-y divide-gray-200">
+            {products.map((product) => (
+              <div key={product.id} className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {product.name}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {product.sku && `SKU: ${product.sku}`}
+                    </div>
+                  </div>
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    product.type === 'product' 
+                      ? 'bg-blue-100 text-blue-800' 
+                      : 'bg-green-100 text-green-800'
+                  }`}>
+                    {product.type === 'product' ? 'สินค้า' : 'บริการ'}
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-gray-500">หมวดหมู่:</span>
+                    <span className="ml-1 text-gray-900">{product.categoryName || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">ราคา:</span>
+                    <span className="ml-1 text-gray-900">
+                      {product.price ? `฿${product.price}` : '-'}
+                      {product.laborPrice && ` + ฿${product.laborPrice}`}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">สต็อก:</span>
+                    <span className="ml-1 text-gray-900">
+                      {product.minStock}
+                      {product.alertEnabled && (
+                        <span className="ml-1 text-orange-500">⚠️</span>
+                      )}
+                    </span>
+                  </div>
+                  <div>
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      product.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {product.isActive ? 'ใช้งาน' : 'ไม่ใช้งาน'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => startEdit(product)}
+                    className="flex-1 px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                  >
+                    แก้ไข
+                  </button>
+                  <button
+                    onClick={() => handleDeleteProduct(product.id)}
+                    className="flex-1 px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                  >
+                    ลบ
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden sm:block">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ชื่อ
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ประเภท
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    หมวดหมู่
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ราคา
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    สต็อก
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    สถานะ
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    จัดการ
+                  </th>
+                </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {products.map((product) => (
@@ -863,6 +937,7 @@ export default function ProductsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Pagination */}

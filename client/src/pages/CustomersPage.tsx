@@ -582,7 +582,7 @@ export default function CustomersPage() {
             </div>
 
             <form onSubmit={customerForm.handleSubmit(handleSaveCustomer)} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">ชื่อลูกค้า *</label>
                   <input
@@ -690,17 +690,17 @@ export default function CustomersPage() {
                 />
               </div>
 
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowCustomerForm(false)}
-                  className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                  className="w-full sm:w-auto px-4 py-2 border rounded-lg hover:bg-gray-50"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700"
+                  className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700"
                 >
                   <Save className="w-4 h-4" />
                   บันทึก
@@ -713,8 +713,8 @@ export default function CustomersPage() {
 
       {/* Vehicle Form Modal */}
       {showVehicleForm && selectedCustomer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">เพิ่มรถยนต์</h2>
               <button
@@ -761,7 +761,7 @@ export default function CustomersPage() {
                         
                         {/* Dropdown List */}
                         {showDropdown && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
                             {filteredBrands.map((brand) => (
                               <div
                                 key={brand.id}
@@ -879,7 +879,7 @@ export default function CustomersPage() {
                         
                         {/* Model Dropdown List */}
                         {showModelDropdown && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
                             {filteredModels.map((model) => (
                               <div
                                 key={model.id}
@@ -1032,17 +1032,17 @@ export default function CustomersPage() {
                 />
               </div>
 
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowVehicleForm(false)}
-                  className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                  className="w-full sm:w-auto px-4 py-2 border rounded-lg hover:bg-gray-50"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700"
+                  className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700"
                 >
                   <Save className="w-4 h-4" />
                   บันทึก

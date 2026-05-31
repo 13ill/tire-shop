@@ -50,7 +50,7 @@ export default function Layout({ children, user, onLogout, currentPage, onNaviga
   });
 
   return (
-    <div className="h-screen flex overflow-hidden bg-gray-100">
+    <div className="min-h-screen flex bg-gray-100">
       {/* Sidebar */}
       <div className={`${sidebarOpen ? 'block' : 'hidden'} md:flex md:flex-shrink-0`}>
         <div className="flex flex-col w-64">
@@ -107,7 +107,7 @@ export default function Layout({ children, user, onLogout, currentPage, onNaviga
       </div>
 
       {/* Main content */}
-      <div className="flex flex-col w-0 flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0">
         {/* Top header */}
         <header className="relative z-10 flex-shrink-0 flex h-16 bg-white border-b border-gray-200">
           <button
@@ -180,8 +180,8 @@ export default function Layout({ children, user, onLogout, currentPage, onNaviga
 
         {/* Page content */}
         <main className="flex-1 relative overflow-y-auto focus:outline-none">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          <div className="py-4 sm:py-6">
+            <div className="px-3 sm:px-4 md:px-6 lg:px-8 max-w-full">
               {children}
             </div>
           </div>

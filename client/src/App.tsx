@@ -91,7 +91,7 @@ function App() {
                 ระบบจัดการร้านยางครบวงจรสำหรับธุรกิจของคุณ
               </p>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h3 className="text-lg font-semibold text-blue-900">วันนี้</h3>
                   <p className="text-2xl font-bold text-blue-600">฿0</p>
