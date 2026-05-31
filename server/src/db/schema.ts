@@ -62,30 +62,116 @@ export const categories = mysqlTable('categories', {
   parentIdx: index('parent_idx').on(table.parentId),
 }));
 
-export const products = mysqlTable('products', {
+export const productGroups = mysqlTable('product_groups', {
   id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => uuidv4()),
-  categoryId: varchar('category_id', { length: 36 }),
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
+  skuPrefix: varchar('sku_prefix', { length: 10 }), // BS for Bridgestone
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+}, (table) => ({
+  nameIdx: index('name_idx').on(table.name),
+  skuPrefixIdx: index('sku_prefix_idx').on(table.skuPrefix),
+}));
+
+export const products = mysqlTable('products', {
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => uuidv4()),
+  groupId: varchar('group_id', { length: 36 }), // อ้างอิง group
+  categoryId: varchar('category_id', { length: 36 }),
+  name: varchar('name', { length: 255 }).notNull(), // Full name: "ยาง Bridgestone 195/65R15"
+  variantName: varchar('variant_name', { length: 255 }), // "195/65R15"
+  description: text('description'),
   type: mysqlEnum('type', ['product', 'service']).notNull(),
-  hasVariants: boolean('has_variants').default(false),
   hasLaborCost: boolean('has_labor_cost').default(false),
-  basePrice: decimal('base_price', { precision: 12, scale: 2 }),
+  price: decimal('price', { precision: 12, scale: 2 }), // ราคาขาย (รวมทุกอย่าง)
   laborPrice: decimal('labor_price', { precision: 12, scale: 2 }),
   costPrice: decimal('cost_price', { precision: 12, scale: 2 }),
   costMethod: mysqlEnum('cost_method', ['fifo', 'average', 'manual']).default('average'),
   unitId: varchar('unit_id', { length: 36 }),
   sku: varchar('sku', { length: 100 }),
   barcode: varchar('barcode', { length: 100 }),
+  stock: decimal('stock', { precision: 12, scale: 2 }).default('0'),
   minStock: decimal('min_stock', { precision: 12, scale: 2 }).default('0'),
   alertEnabled: boolean('alert_enabled').default(true),
   isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 }, (table) => ({
+  groupIdx: index('group_idx').on(table.groupId),
   categoryIdx: index('category_idx').on(table.categoryId),
   skuIdx: index('sku_idx').on(table.sku),
   barcodeIdx: index('barcode_idx').on(table.barcode),
+  variantIdx: index('variant_idx').on(table.variantName),
+}));
+
+export const customers = mysqlTable('customers', {
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => uuidv4()),
+  name: varchar('name', { length: 200 }).notNull(),
+  phone: varchar('phone', { length: 20 }),
+  email: varchar('email', { length: 100 }),
+  address: text('address'),
+  province: varchar('province', { length: 100 }),
+  district: varchar('district', { length: 100 }),
+  subdistrict: varchar('subdistrict', { length: 100 }),
+  zipcode: varchar('zipcode', { length: 10 }),
+  taxId: varchar('tax_id', { length: 20 }),
+  note: text('note'),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+}, (table) => ({
+  nameIdx: index('name_idx').on(table.name),
+  phoneIdx: index('phone_idx').on(table.phone),
+  emailIdx: index('email_idx').on(table.email),
+}));
+
+export const vehicles = mysqlTable('vehicles', {
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => uuidv4()),
+  customerId: varchar('customer_id', { length: 36 }).notNull(),
+  brandId: varchar('brand_id', { length: 36 }),
+  modelId: varchar('model_id', { length: 36 }),
+  brandCustom: varchar('brand_custom', { length: 100 }),
+  modelCustom: varchar('model_custom', { length: 100 }),
+  year: varchar('year', { length: 4 }),
+  color: varchar('color', { length: 50 }),
+  licensePlate: varchar('license_plate', { length: 20 }),
+  vin: varchar('vin', { length: 50 }),
+  engineNumber: varchar('engine_number', { length: 50 }),
+  mileage: decimal('mileage', { precision: 10, scale: 2 }),
+  note: text('note'),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+}, (table) => ({
+  customerIdx: index('customer_idx').on(table.customerId),
+  licensePlateIdx: index('license_plate_idx').on(table.licensePlate),
+  vinIdx: index('vin_idx').on(table.vin),
+  brandIdx: index('vehicle_brand_idx').on(table.brandId),
+  modelIdx: index('vehicle_model_idx').on(table.modelId),
+}));
+
+export const vehicleBrands = mysqlTable('vehicle_brands', {
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => uuidv4()),
+  name: varchar('name', { length: 100 }).notNull(),
+  country: varchar('country', { length: 50 }),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+}, (table) => ({
+  nameIdx: index('brand_idx').on(table.name),
+}));
+
+export const vehicleModels = mysqlTable('vehicle_models', {
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => uuidv4()),
+  brandId: varchar('brand_id', { length: 36 }).notNull(),
+  name: varchar('name', { length: 100 }).notNull(),
+  category: varchar('category', { length: 50 }),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+}, (table) => ({
+  brandModelIdx: index('brand_model_idx').on(table.brandId),
 }));
 
 export const pricingTiers = mysqlTable('pricing_tiers', {
@@ -101,3 +187,11 @@ export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
 export type Category = typeof categories.$inferSelect;
 export type NewCategory = typeof categories.$inferInsert;
+export type ProductGroup = typeof productGroups.$inferSelect;
+export type NewProductGroup = typeof productGroups.$inferInsert;
+export type Customer = typeof customers.$inferSelect;
+export type NewCustomer = typeof customers.$inferInsert;
+export type Vehicle = typeof vehicles.$inferSelect;
+export type NewVehicle = typeof vehicles.$inferInsert;
+export type PricingTier = typeof pricingTiers.$inferSelect;
+export type NewPricingTier = typeof pricingTiers.$inferInsert;

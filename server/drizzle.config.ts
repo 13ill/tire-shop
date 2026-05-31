@@ -4,9 +4,9 @@ import { config } from 'dotenv';
 config({ path: '.env' });
 
 export default {
-  dialect: 'mysql2',
   schema: './src/db/schema.ts',
   out: './src/db/migrations',
+  dialect: 'mysql2',
   dbCredentials: {
     host: 'localhost',
     port: 3306,
@@ -16,4 +16,4 @@ export default {
   },
   verbose: true,
   strict: true,
-} as Config;
+} satisfies Config;

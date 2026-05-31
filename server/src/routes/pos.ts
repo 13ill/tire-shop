@@ -84,11 +84,11 @@ posRouter.get('/products', async (c) => {
       name: product.name,
       sku: product.sku,
       type: product.type,
-      basePrice: product.basePrice || 0,
-      laborPrice: product.laborPrice || 0,
-      costPrice: product.costPrice || 0,
+      basePrice: parseFloat(product.price?.toString() || '0'),
+      laborPrice: parseFloat(product.laborPrice?.toString() || '0'),
+      costPrice: parseFloat(product.costPrice?.toString() || '0'),
       unitId: product.unitId,
-      minStock: product.minStock || 0,
+      minStock: parseFloat(product.minStock?.toString() || '0'),
       currentStock: 0, // ต้องดึงจาก stock balance
       barcode: product.barcode,
     }));

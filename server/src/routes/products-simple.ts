@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db } from '../db';
-import { products, categories, units, pricingTiers } from '../db/schema';
+import { products, categories, units, pricingTiers, productGroups } from '../db/schema';
 import { eq, and, desc, asc, like } from 'drizzle-orm';
 
 const productsRouter = new Hono();
@@ -12,17 +12,20 @@ const productSchema = z.object({
   name: z.string().min(1, 'กรุณาระบุชื่อสินค้า/บริการ'),
   description: z.string().optional(),
   type: z.enum(['product', 'service']),
-  categoryId: z.string().uuid().optional(),
+  categoryId: z.string().uuid().nullable().optional(),
+  groupId: z.string().uuid().nullable().optional(),
+  variantName: z.string().optional(),
   hasVariants: z.boolean().default(false),
   hasLaborCost: z.boolean().default(false),
-  basePrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'กรุณาระบุเป็นตัวเลข').optional(),
+  price: z.string().regex(/^\d+(\.\d{1,2})?$/, 'กรุณาระบุเป็นตัวเลข'),
   laborPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'กรุณาระบุเป็นตัวเลข').optional(),
   costPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'กรุณาระบุเป็นตัวเลข').optional(),
   costMethod: z.enum(['fifo', 'average', 'manual']).default('average'),
-  unitId: z.string().uuid().optional(),
+  unitId: z.string().uuid().nullable().optional(),
   sku: z.string().optional(),
   barcode: z.string().optional(),
-  minStock: z.string().regex(/^\d+(\.\d{1,2})?$/, 'กรุณาระบุเป็นตัวเลข').default('0'),
+  stock: z.string().regex(/^\d+(\.\d{1,2})?$/, 'กรุณาระบุเป็นตัวเลข').default('0'),
+  minStock: z.string().regex(/^\d+(\.\d{1,2})?$/, 'กรุณาระบุเป็นตัวเลข').nullable().optional(),
   alertEnabled: z.boolean().default(true),
   isActive: z.boolean().default(true),
 });
@@ -44,18 +47,20 @@ productsRouter.get('/', async (c) => {
       result = await db
         .select({
           id: products.id,
+          groupId: products.groupId,
           name: products.name,
+          variantName: products.variantName,
           description: products.description,
           type: products.type,
-          hasVariants: products.hasVariants,
           hasLaborCost: products.hasLaborCost,
-          basePrice: products.basePrice,
+          price: products.price,
           laborPrice: products.laborPrice,
           costPrice: products.costPrice,
           costMethod: products.costMethod,
           unitId: products.unitId,
           sku: products.sku,
           barcode: products.barcode,
+          stock: products.stock,
           minStock: products.minStock,
           alertEnabled: products.alertEnabled,
           isActive: products.isActive,
@@ -63,10 +68,12 @@ productsRouter.get('/', async (c) => {
           updatedAt: products.updatedAt,
           categoryName: categories.name,
           unitName: units.name,
+          groupName: productGroups.name,
         })
         .from(products)
         .leftJoin(categories, eq(products.categoryId, categories.id))
         .leftJoin(units, eq(products.unitId, units.id))
+        .leftJoin(productGroups, eq(products.groupId, productGroups.id))
         .where(and(
           eq(products.type, type),
           eq(products.categoryId, categoryId),
@@ -81,18 +88,20 @@ productsRouter.get('/', async (c) => {
       result = await db
         .select({
           id: products.id,
+          groupId: products.groupId,
           name: products.name,
+          variantName: products.variantName,
           description: products.description,
           type: products.type,
-          hasVariants: products.hasVariants,
           hasLaborCost: products.hasLaborCost,
-          basePrice: products.basePrice,
+          price: products.price,
           laborPrice: products.laborPrice,
           costPrice: products.costPrice,
           costMethod: products.costMethod,
           unitId: products.unitId,
           sku: products.sku,
           barcode: products.barcode,
+          stock: products.stock,
           minStock: products.minStock,
           alertEnabled: products.alertEnabled,
           isActive: products.isActive,
@@ -100,10 +109,12 @@ productsRouter.get('/', async (c) => {
           updatedAt: products.updatedAt,
           categoryName: categories.name,
           unitName: units.name,
+          groupName: productGroups.name,
         })
         .from(products)
         .leftJoin(categories, eq(products.categoryId, categories.id))
         .leftJoin(units, eq(products.unitId, units.id))
+        .leftJoin(productGroups, eq(products.groupId, productGroups.id))
         .orderBy(desc(products.createdAt))
         .limit(limit)
         .offset(offset);
@@ -139,18 +150,20 @@ productsRouter.get('/:id', async (c) => {
     const product = await db
       .select({
         id: products.id,
+        groupId: products.groupId,
         name: products.name,
+        variantName: products.variantName,
         description: products.description,
         type: products.type,
-        hasVariants: products.hasVariants,
         hasLaborCost: products.hasLaborCost,
-        basePrice: products.basePrice,
+        price: products.price,
         laborPrice: products.laborPrice,
         costPrice: products.costPrice,
         costMethod: products.costMethod,
         unitId: products.unitId,
         sku: products.sku,
         barcode: products.barcode,
+        stock: products.stock,
         minStock: products.minStock,
         alertEnabled: products.alertEnabled,
         isActive: products.isActive,
@@ -237,7 +250,24 @@ productsRouter.post('/', zValidator('json', productSchema), async (c) => {
     const newId = crypto.randomUUID();
     await db.insert(products).values({
       id: newId,
-      ...data,
+      name: data.name,
+      description: data.description,
+      type: data.type,
+      categoryId: data.categoryId,
+      groupId: data.groupId,
+      variantName: data.variantName,
+      hasLaborCost: data.hasLaborCost,
+      price: data.price,
+      laborPrice: data.laborPrice,
+      costPrice: data.costPrice,
+      costMethod: data.costMethod,
+      unitId: data.unitId,
+      sku: data.sku,
+      barcode: data.barcode,
+      stock: data.stock,
+      minStock: data.minStock,
+      alertEnabled: data.alertEnabled,
+      isActive: data.isActive,
       createdAt: new Date(),
       updatedAt: new Date(),
     });

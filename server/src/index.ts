@@ -33,6 +33,8 @@ import categoriesRoutes from './routes/categories';
 import productsRoutes from './routes/products-simple';
 import stockRoutes from './routes/stock-simple';
 import posRoutes from './routes/pos';
+import productGroupsRoutes from './routes/product-groups';
+import customersRoutes from './routes/customers';
 
 app.route('/api/auth', authRoutes);
 app.route('/api/settings', settingsRoutes);
@@ -40,6 +42,8 @@ app.route('/api/categories', categoriesRoutes);
 app.route('/api/products', productsRoutes);
 app.route('/api/stock', stockRoutes);
 app.route('/api/pos', posRoutes);
+app.route('/api/product-groups', productGroupsRoutes);
+app.route('/api/customers', customersRoutes);
 
 const port = Number(process.env.PORT) || 3000;
 

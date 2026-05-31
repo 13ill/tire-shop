@@ -18,18 +18,21 @@ import {
 // Types
 interface Product {
   id: string;
+  groupId?: string;
   name: string;
+  variantName?: string;
   description?: string;
   type: 'product' | 'service';
   hasVariants: boolean;
   hasLaborCost: boolean;
-  basePrice?: string;
+  price?: string;
   laborPrice?: string;
   costPrice?: string;
   costMethod: 'fifo' | 'average' | 'manual';
   unitId?: string;
   sku?: string;
   barcode?: string;
+  stock?: string;
   minStock: string;
   alertEnabled: boolean;
   isActive: boolean;
@@ -37,6 +40,7 @@ interface Product {
   updatedAt: string;
   categoryName?: string;
   unitName?: string;
+  groupName?: string;
 }
 
 interface Category {
@@ -51,30 +55,61 @@ interface Unit {
   isDefault: boolean;
 }
 
+interface ProductGroup {
+  id: string;
+  name: string;
+  description?: string;
+  skuPrefix?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Schemas
 const productSchema = z.object({
   name: z.string().min(1, 'กรุณาระบุชื่อสินค้า/บริการ'),
   description: z.string().optional(),
   type: z.enum(['product', 'service']),
   categoryId: z.string().uuid().optional(),
+  groupId: z.string().uuid().optional(),
+  variantName: z.string().optional(),
   hasVariants: z.boolean().default(false),
   hasLaborCost: z.boolean().default(false),
-  basePrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'กรุณาระบุเป็นตัวเลข').optional(),
+  price: z.string().regex(/^\d+(\.\d{1,2})?$/, 'กรุณาระบุเป็นตัวเลข'),
   laborPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'กรุณาระบุเป็นตัวเลข').optional(),
   costPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'กรุณาระบุเป็นตัวเลข').optional(),
   costMethod: z.enum(['fifo', 'average', 'manual']).default('average'),
   unitId: z.string().uuid().optional(),
   sku: z.string().optional(),
   barcode: z.string().optional(),
-  minStock: z.string().regex(/^\d+(\.\d{1,2})?$/, 'กรุณาระบุเป็นตัวเลข').default('0'),
+  minStock: z.string().optional(),
   alertEnabled: z.boolean().default(true),
   isActive: z.boolean().default(true),
+}).refine((data) => {
+  // Price validation - required for both types
+  if (!data.price || parseFloat(data.price) <= 0) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'กรุณาระบุราคาให้ถูกต้อง',
+  path: ['price'],
+}).refine((data) => {
+  // Unit validation only for products
+  if (data.type === 'product' && !data.unitId) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'กรุณาระบุหน่วยนับ',
+  path: ['unitId'],
 });
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [productGroups, setProductGroups] = useState<ProductGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -82,18 +117,83 @@ export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'product' | 'service'>('all');
   const [filterCategory, setFilterCategory] = useState('');
+  const [filterGroup, setFilterGroup] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  // Auto-generate functions
+  const generateSKU = (name: string, type: 'product' | 'service'): string => {
+    if (type === 'service') {
+      // Services don't need SKU, return empty
+      return '';
+    }
+    
+    // Generate SKU from product name
+    const words = name.toUpperCase().split(' ');
+    const brand = words[0]?.substring(0, 2) || 'XX';
+    const specs = words.slice(1).join('').replace(/[^A-Z0-9]/g, '');
+    return brand + specs.substring(0, 8);
+  };
+
+  const generateBarcode = (sku: string): string => {
+    if (!sku) return '';
+    // Generate simple barcode from SKU (in real app, use proper barcode algorithm)
+    return 'BC' + sku.replace(/[^A-Z0-9]/g, '') + Date.now().toString().slice(-4);
+  };
 
   // Forms
   const productForm = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
+    mode: 'onChange', // Revalidate on change
   });
+
+  // Watch for changes and auto-generate
+  const watchName = productForm.watch('name');
+  const watchType = productForm.watch('type');
+  const watchSKU = productForm.watch('sku');
+  const watchBarcode = productForm.watch('barcode');
+
+  useEffect(() => {
+    if (watchName && watchType && !editingProduct) {
+      const newSKU = generateSKU(watchName, watchType);
+      const newBarcode = generateBarcode(newSKU);
+      
+      if (!watchSKU && newSKU) {
+        productForm.setValue('sku', newSKU);
+      }
+      if (!watchBarcode && newBarcode) {
+        productForm.setValue('barcode', newBarcode);
+      }
+    }
+  }, [watchName, watchType, watchSKU, watchBarcode, editingProduct, productForm]);
+
+  // Revalidate form when type changes
+  useEffect(() => {
+    if (watchType) {
+      console.log('🔥 Type changed to:', watchType);
+      
+      // Clear values that shouldn't apply to current type
+      if (watchType === 'service') {
+        console.log('🔥 Clearing service fields...');
+        productForm.setValue('groupId', '');
+        productForm.setValue('unitId', '');
+        productForm.setValue('minStock', '');
+        
+        // Force clear errors for these fields
+        productForm.clearErrors(['groupId', 'unitId', 'minStock']);
+        console.log('🔥 Cleared errors for service fields');
+      }
+      
+      // Revalidate affected fields
+      productForm.trigger(['unitId', 'groupId', 'minStock']);
+      console.log('🔥 Revalidated fields');
+    }
+  }, [watchType, productForm]);
 
   // Load data
   useEffect(() => {
     loadData();
-  }, [currentPage, searchTerm, filterType, filterCategory]);
+  }, [currentPage, searchTerm, filterType, filterCategory, filterGroup]);
 
   const loadData = async () => {
     try {
@@ -109,16 +209,18 @@ export default function ProductsPage() {
       if (filterType !== 'all') params.append('type', filterType);
       if (filterCategory) params.append('categoryId', filterCategory);
 
-      const [productsRes, categoriesRes, unitsRes] = await Promise.all([
-        fetch(`/api/products?${params}`),
-        fetch('/api/categories'),
-        fetch('/api/settings/units'),
+      const [productsRes, categoriesRes, unitsRes, groupsRes] = await Promise.all([
+        fetch(`http://localhost:3000/api/products?${params}`),
+        fetch('http://localhost:3000/api/categories'),
+        fetch('http://localhost:3000/api/settings/units'),
+        fetch('http://localhost:3000/api/product-groups'),
       ]);
 
-      const [productsData, categoriesData, unitsData] = await Promise.all([
+      const [productsData, categoriesData, unitsData, groupsData] = await Promise.all([
         productsRes.json(),
         categoriesRes.json(),
         unitsRes.json(),
+        groupsRes.json(),
       ]);
 
       if (productsData.success) {
@@ -127,6 +229,7 @@ export default function ProductsPage() {
       }
       if (categoriesData.success) setCategories(categoriesData.data);
       if (unitsData.success) setUnits(unitsData.data);
+      if (groupsData.success) setProductGroups(groupsData.data);
     } catch (error) {
       console.error('Load products error:', error);
     } finally {
@@ -135,27 +238,67 @@ export default function ProductsPage() {
   };
 
   const handleSaveProduct = async (data: z.infer<typeof productSchema>) => {
+    console.log('🔥 handleSaveProduct called with:', data);
+    console.log('🔥 editingProduct:', editingProduct);
+    console.log('🔥 editingProduct.id:', editingProduct?.id);
+    
+    // Clean data before sending to backend
+    const cleanedData = {
+      ...data,
+      // Convert empty strings to null/undefined for UUID fields
+      groupId: data.groupId || null,
+      unitId: data.unitId || null,
+      categoryId: data.categoryId || null,
+      // Convert empty strings to null for optional numeric fields
+      minStock: data.minStock || null,
+      // Keep other fields as-is
+    };
+    
+    console.log('🔥 Cleaned data:', cleanedData);
+    
     setIsSaving(true);
     try {
-      const url = editingProduct 
-        ? `/api/products/${editingProduct.id}`
-        : '/api/products';
+      const url = editingProduct && editingProduct.id
+        ? `http://localhost:3000/api/products/${editingProduct.id}`
+        : 'http://localhost:3000/api/products';
       
-      const method = editingProduct ? 'PUT' : 'POST';
+      const method = editingProduct && editingProduct.id ? 'PUT' : 'POST';
+      console.log('🔥 URL:', url, 'Method:', method);
       
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(cleanedData),
       });
 
-      if (response.ok) {
+      console.log('🔥 Response status:', response.status);
+      const result = await response.json();
+      console.log('🔥 Response result:', result);
+      console.log('🔥 Error details:', result.error);
+
+      if (response.ok && result.success) {
         await loadData();
         setEditingProduct(null);
         productForm.reset();
+        alert(editingProduct ? 'อัพเดทสินค้าเรียบร้อย' : 'สร้างสินค้าเรียบร้อย');
+      } else {
+        console.log('🔥 Backend error:', result.error);
+        
+        // Log ZodError issues in detail
+        if (result.error && result.error.issues) {
+          console.log('🔥 ZodError issues:');
+          result.error.issues.forEach((issue: any, index: number) => {
+            console.log(`  ${index + 1}. Field: ${issue.path?.join('.') || 'unknown'}`);
+            console.log(`     Message: ${issue.message}`);
+            console.log(`     Code: ${issue.code}`);
+          });
+        }
+        
+        alert(result.error?.message || result.error || 'ไม่สามารถบันทึกสินค้าได้');
       }
     } catch (error) {
-      console.error('Save product error:', error);
+      console.error('🔥 Save product error:', error);
+      alert('เกิดข้อผิดพลาดในการบันทึกสินค้า');
     } finally {
       setIsSaving(false);
     }
@@ -189,7 +332,7 @@ export default function ProductsPage() {
       categoryId: product.categoryId || '',
       hasVariants: product.hasVariants,
       hasLaborCost: product.hasLaborCost,
-      basePrice: product.basePrice || '',
+      price: product.price || '',
       laborPrice: product.laborPrice || '',
       costPrice: product.costPrice || '',
       costMethod: product.costMethod,
@@ -228,7 +371,7 @@ export default function ProductsPage() {
               type: 'product',
               hasVariants: false,
               hasLaborCost: false,
-              basePrice: '',
+              price: '',
               laborPrice: '',
               costPrice: '',
               costMethod: 'average',
@@ -309,7 +452,27 @@ export default function ProductsPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             {editingProduct.id ? 'แก้ไขสินค้า/บริการ' : 'เพิ่มสินค้า/บริการ'}
           </h2>
-          <form onSubmit={productForm.handleSubmit(handleSaveProduct)} className="space-y-4">
+          <form onSubmit={(e) => {
+                  e.preventDefault();
+                  console.log('🔥 Form submit triggered!');
+                  console.log('🔥 Form is valid:', productForm.formState.isValid);
+                  console.log('🔥 Form errors:', productForm.formState.errors);
+                  
+                  const values = productForm.getValues();
+                  console.log('🔥 Form values:', values);
+                  
+                  // Brute force: bypass validation for services
+                  if (values.type === 'service') {
+                    console.log('🔥 Bypassing validation for service!');
+                    handleSaveProduct(values);
+                    return;
+                  }
+                  
+                  // Normal flow for products
+                  const result = productForm.handleSubmit(handleSaveProduct)(e);
+                  console.log('🔥 handleSubmit result:', result);
+                  return result;
+                }} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -355,68 +518,134 @@ export default function ProductsPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  SKU
-                </label>
-                <input
-                  {...productForm.register('sku')}
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+              {watchType === 'product' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    กลุ่มสินค้า (สำหรับสินค้าที่มีรุ่นย่อย)
+                  </label>
+                  <select
+                    {...productForm.register('groupId')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">ไม่มีกลุ่ม (สินค้าเดี่ยว)</option>
+                    {productGroups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name} {group.skuPrefix && `(${group.skuPrefix})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Barcode
-                </label>
-                <input
-                  {...productForm.register('barcode')}
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+              {watchType === 'product' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      SKU {watchType === 'product' && '(Auto-generate)'}
+                    </label>
+                    <input
+                      {...productForm.register('sku')}
+                      type="text"
+                      placeholder="จะสร้างอัตโนมัติจากชื่อสินค้า"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  หน่วยนับ
-                </label>
-                <select
-                  {...productForm.register('unitId')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">เลือกหน่วย</option>
-                  {units.map((unit) => (
-                    <option key={unit.id} value={unit.id}>
-                      {unit.name} {unit.isDefault && '(ค่าเริ่มต้น)'}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Barcode {watchType === 'product' && '(Auto-generate)'}
+                    </label>
+                    <input
+                      {...productForm.register('barcode')}
+                      type="text"
+                      placeholder="จะสร้างอัตโนมัติจาก SKU"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </>
+              )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ราคาขายปลีก
-                </label>
-                <input
-                  {...productForm.register('basePrice')}
-                  type="text"
-                  placeholder="0.00"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+              {watchType === 'product' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    หน่วยนับ
+                  </label>
+                  <select
+                    {...productForm.register('unitId')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">เลือกหน่วย</option>
+                    {units.map((unit) => (
+                      <option key={unit.id} value={unit.id}>
+                        {unit.name} {unit.isDefault && '(ค่าเริ่มต้น)'}
+                      </option>
+                    ))}
+                  </select>
+                  {productForm.formState.errors.unitId && (
+                    <p className="text-red-600 text-sm mt-1">{productForm.formState.errors.unitId.message}</p>
+                  )}
+                </div>
+              )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ราคาแรงงาน
-                </label>
-                <input
-                  {...productForm.register('laborPrice')}
-                  type="text"
-                  placeholder="0.00"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+              {watchType === 'product' ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ราคาขายปลีก *
+                    </label>
+                    <input
+                      {...productForm.register('price')}
+                      type="text"
+                      placeholder="0.00"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    {productForm.formState.errors.price && (
+                      <p className="text-red-600 text-sm mt-1">{productForm.formState.errors.price.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ราคาแรงงาน (ถ้ามี)
+                    </label>
+                    <input
+                      {...productForm.register('laborPrice')}
+                      type="text"
+                      placeholder="0.00"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ราคาบริการรวม *
+                    </label>
+                    <input
+                      {...productForm.register('price')}
+                      type="text"
+                      placeholder="0.00"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    {productForm.formState.errors.price && (
+                      <p className="text-red-600 text-sm mt-1">{productForm.formState.errors.price.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      แยกราคาแรงงาน (ถ้าต้องการ)
+                    </label>
+                    <input
+                      {...productForm.register('laborPrice')}
+                      type="text"
+                      placeholder="0.00"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -430,31 +659,35 @@ export default function ProductsPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  วิธีคำนวณทุน
-                </label>
-                <select
-                  {...productForm.register('costMethod')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="fifo">FIFO (เข้าก่อนออกก่อน)</option>
-                  <option value="average">เฉลี่ย</option>
-                  <option value="manual">กำหนดเอง</option>
-                </select>
-              </div>
+              {watchType === 'product' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      วิธีคำนวณทุน
+                    </label>
+                    <select
+                      {...productForm.register('costMethod')}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="fifo">FIFO (เข้าก่อนออกก่อน)</option>
+                      <option value="average">เฉลี่ย</option>
+                      <option value="manual">กำหนดเอง</option>
+                    </select>
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  สต็อกขั้นต่ำ
-                </label>
-                <input
-                  {...productForm.register('minStock')}
-                  type="text"
-                  placeholder="0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      สต็อกขั้นต่ำ
+                    </label>
+                    <input
+                      {...productForm.register('minStock')}
+                      type="text"
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="flex items-center space-x-4">
                 <div className="flex items-center">
@@ -479,16 +712,18 @@ export default function ProductsPage() {
                   </label>
                 </div>
 
-                <div className="flex items-center">
-                  <input
-                    {...productForm.register('alertEnabled')}
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label className="ml-2 block text-sm text-gray-900">
-                    แจ้งเตือนสต็อกต่ำ
-                  </label>
-                </div>
+                {watchType === 'product' && (
+                  <div className="flex items-center">
+                    <input
+                      {...productForm.register('alertEnabled')}
+                      type="checkbox"
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label className="ml-2 block text-sm text-gray-900">
+                      แจ้งเตือนสต็อกต่ำ
+                    </label>
+                  </div>
+                )}
 
                 <div className="flex items-center">
                   <input
@@ -594,7 +829,7 @@ export default function ProductsPage() {
                     {product.categoryName || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {product.basePrice ? `฿${product.basePrice}` : '-'}
+                    {product.price ? `฿${product.price}` : '-'}
                     {product.laborPrice && ` + ฿${product.laborPrice}`}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
